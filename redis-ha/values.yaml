@@ -90,8 +90,9 @@ redis:
     repl-diskless-sync: "yes"
     rdbcompression: "yes"
     rdbchecksum: "yes"
-
+    #Enable if you want a dedicated port in haproxy for redis-slaves
 redisslave:
+  enabled: false
   port: 6380  
 
 

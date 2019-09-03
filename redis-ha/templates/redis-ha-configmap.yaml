@@ -140,11 +140,7 @@ data:
 {{- if .Values.haproxy.customConfig }}
 {{ .Values.haproxy.customConfig | indent 4}}
 {{- else }}
-    global
-      log /dev/log  local0
     defaults REDIS
-      log global
-      option  httplog
       mode tcp
       timeout connect  4s
       timeout server  30s
@@ -182,20 +178,17 @@ data:
 
     # decide redis backend to use
     #master
-    frontend ft_1
+    frontend ft_redis_master
       bind *:6379
-      log global 
-      option  httplog
-      use_backend back_1
+      use_backend bk_redis_master
+    {{ if .Values.redisslave.enabled }}
     #slave
-    frontend ft_2
+    frontend ft_redis_slave
       bind *:6380
-      log global
-      option  httplog
-      use_backend back_2
-
+      use_backend bk_redis_slave
+    {{- end }} 
     # Check all redis servers to see if they think they are master
-    backend back_1
+    backend bk_redis_master
       mode tcp
       option tcp-check
       tcp-check connect
@@ -213,8 +206,8 @@ data:
       use-server R{{ $i }} if { srv_is_up(R{{ $i }}) } { nbsrv(check_if_redis_is_master_{{ $i }}) ge 2 }
       server R{{ $i }} {{ $fullName }}-announce-{{ $i }}:6379 check inter 2s fall 1 rise 3
       {{- end }}     
-    
-    backend back_2
+    {{ if .Values.redisslave.enabled }}
+    backend bk_redis_slave
       mode tcp
       option tcp-check
       tcp-check connect
@@ -231,6 +224,7 @@ data:
       {{- range $i := until $replicas }}
       server R{{ $i }} {{ $fullName }}-announce-{{ $i }}:6379 check inter 2s fall 1 rise 3
       {{- end }}
+    {{- end }}
 {{- end }}
 {{- end }}
   haproxy_init.sh: | 
